@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OMSB Report</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --primary: #003087; --accent: #00A3E0; --danger: #e74c3c; --border: #ddd; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: 'Inter', sans-serif; background: #f8f9fa; padding: 16px; min-height: 100vh; overflow: auto; }
+    .header { background: var(--primary); color: white; text-align: center; padding: 16px; font-weight: 700; font-size: 18px; border-radius: 12px 12px 0 0; margin: -16px -16px 20px; }
+    .section { background: white; padding: 18px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; color: var(--primary); font-size: 14px; }
+    input, select, textarea { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 15px; }
+    textarea { min-height: 100px; resize: vertical; }
+    .photo-preview { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .photo-item { position: relative; width: 100px; height: 100px; border-radius: 10px; overflow: hidden; border: 2px solid var(--border); }
+    .photo-item img { width:100%; height:100%; object-fit: cover; }
+    .remove-photo { position: absolute; top: 4px; right: 4px; background: var(--danger); color: white; border: none; width: 24px; height: 24px; border-radius: 50%; font-size: 12px; cursor: pointer; }
+    .btn { padding: 14px 20px; border: none; border-radius: 12px; font-weight: 600; font-size: 16px; cursor: pointer; width: 100%; margin-top: 10px; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .upload-btn { background: white; border: 2px dashed var(--accent); color: var(--accent); text-align: center; padding: 20px; border-radius: 12px; cursor: pointer; font-weight: 600; margin: 10px 0; }
+    .loading { text-align: center; padding: 30px; display: none; }
+    .spinner { border: 4px solid #f3f3f4; border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 16px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); text-align: center; z-index: 100; }
+    .hidden { display: none; }
+    .preview-section { background: white; padding: 18px; border-radius: 12px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .preview-text { font-size: 14px; margin-bottom: 15px; line-height: 1.7; white-space: pre-line; }
+    .preview-photos { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .preview-photo { width: 70px; height: 70px; border-radius: 8px; object-fit: cover; border: 1px solid #ddd; }
+    .samsung-warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 14px; text-align: center; }
+
+    /* NEW: STATUS BUTTONS */
+    .status-group { display: flex; gap: 15px; margin-top: 8px; }
+    .status-btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; flex: 1; text-align: center; }
+    .status-ok { background: #4CAF50; color: white; }
+    .status-ng { background: #e74c3c; color: white; }
+    .status-btn.selected { box-shadow: 0 0 0 2px #003087; }
+  </style>
+</head>
+<body>
+<div class="header">OMSB MONITOR STATION TROUBLESHOOT REPORT</div>
+<div id="samsungWarning" class="samsung-warning hidden">
+  <strong>Tip:</strong> For best sharing, use Chrome browser. Samsung Internet has a PDF sharing bug.
+</div>
+<form id="reportForm">
+  <div class="section">
+    <div class="form-group">
+      <label>TECH NAME</label>
+      <select id="techName" required>
+        <option value="">Select</option>
+        <option>AMALI</option><option>JAYA</option><option>FASIHAH</option><option>NANI</option>
+        <option>NANA</option><option>AFIE</option><option>MD ZAM</option><option>ADLINA</option>
+      </select>
+    </div>
+  </div>
+  <div class="section">
+    <div class="form-group">
+      <label>DATE</label>
+      <input type="datetime-local" id="reportDate" required />
+    </div>
+  </div>
+  <div class="section">
+    <div class="form-group">
+      <label>SUB-STATION</label>
+      <select id="subStation" required onchange="loadMachines()">
+        <option value="">Select</option>
+        <option value="CONTRAST">CONTRAST</option>
+        <option value="DP3 AOI">DP3 AOI</option>
+        <option value="DP3">DP3</option>
+        <option value="QC">QC</option>
+        <option value="VCOM">VCOM</option>
+        <option value="ID READING">ID READING</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>MACHINE NUMBER</label>
+      <select id="machineNumber" required onchange="this.blur()">
+        <option value="">Select</option>
+      </select>
+    </div>
+  </div>
+  <div class="section">
+    <div class="form-group">
+      <label>NG SYMPTOM</label>
+      <textarea id="ngSymptom" placeholder="Type here... (press Enter for new line)" required></textarea>
+    </div>
+    <div class="form-group">
+      <label>Action Taken</label>
+      <textarea id="actionTaken" placeholder="Type here... (press Enter for new line)" required></textarea>
+    </div>
+    <div class="form-group">
+      <label>CHANGED MACHINE?</label>
+      <div style="display:flex; gap:20px;">
+        <label><input type="radio" name="changed" value="Yes" onchange="toggleNew()"> Yes</label>
+        <label><input type="radio" name="changed" value="No" onchange="toggleNew()" checked> No</label>
+      </div>
+    </div>
+
+    <!-- NEW: MACHINE CURRENT STATUS -->
+    <div class="form-group">
+      <label>MACHINE CURRENT STATUS</label>
+      <div class="status-group">
+        <button type="button" class="status-btn status-ok" onclick="selectStatus('OK', this)">OK</button>
+        <button type="button" class="status-btn status-ng" onclick="selectStatus('NG', this)">NG</button>
+      </div>
+      <input type="hidden" id="machineStatus" required />
+    </div>
+
+    <div id="changedFields" class="hidden">
+      <div class="form-group"><label>MACHINE NUMBER 1</label><select id="newMachine1" onchange="this.blur()"><option value="">Select</option></select></div>
+      <div class="form-group"><label>MACHINE NUMBER 2</label><select id="newMachine2" onchange="this.blur()"><option value="">Optional</option></select></div>
+      <div class="form-group"><label>MACHINE NUMBER 3</label><select id="newMachine3" onchange="this.blur()"><option value="">Optional</option></select></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="upload-btn" onclick="document.getElementById('cameraInput').click()">Take Photo</div>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" multiple onchange="addPhotos(this.files)">
+    <div class="upload-btn" onclick="document.getElementById('galleryInput').click()">Choose from Storage</div>
+    <input type="file" id="galleryInput" accept="image/*" class="hidden" multiple onchange="addPhotos(this.files)">
+    <div id="photoPreview" class="photo-preview"></div>
+    <small>At least 1 photo (up to 20)</small>
+  </div>
+  <div class="footer">
+    <button type="button" id="submitBtn" class="btn btn-primary" disabled onclick="generateReport()">SUBMIT</button>
+  </div>
+</form>
+<div id="loadingScreen" class="loading hidden">
+  <div class="spinner"></div>
+  <p>Generating PDF...</p>
+</div>
+<div id="shareScreen" class="section hidden" style="text-align:center; margin:20px;">
+  <p style="font-weight:600;">Report Ready!</p>
+  <div id="previewContent" class="preview-section">
+    <div id="previewText" class="preview-text"></div>
+    <div id="previewPhotos" class="preview-photos"></div>
+  </div>
+  <button id="shareBtn" class="btn btn-primary">SHARE TO WHATSAPP</button>
+  <button id="closeBtn" class="btn" style="background:#ccc; margin-top:10px;" onclick="window.close()">CLOSE</button>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+  const { jsPDF } = window.jspdf;
+  // Samsung detection
+  const isSamsung = /SamsungBrowser/i.test(navigator.userAgent);
+  if (isSamsung) document.getElementById('samsungWarning').classList.remove('hidden');
+  // AUTO FILL CURRENT TIME (MYT)
+  const now = new Date();
+  const local = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  document.getElementById('reportDate').value = local.toISOString().slice(0, 16);
+  const prefixMap = { "CONTRAST": "CONTRAST", "DP3 AOI": "DP3AOI", "DP3": "DP3", "QC": "QC", "VCOM": "VCOM", "ID READING": "IDR" };
+  let currentPrefix = "", photos = [];
+
+  // NEW: STATUS SELECTION
+  function selectStatus(status, btn) {
+    document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('machineStatus').value = status;
+    validate();
+  }
+
+  // FORM LOGIC — FULLY RESTORED & WORKING
+  function loadMachines() {
+    const sub = document.getElementById('subStation').value;
+    currentPrefix = prefixMap[sub] || "";
+    const main = document.getElementById('machineNumber');
+    const saved = main.value;
+    main.innerHTML = '<option value="">Select</option>';
+    if (currentPrefix) {
+      for (let i = 1; i <= 30; i++) {
+        main.add(new Option(`${currentPrefix}-${i}`, `${currentPrefix}-${i}`));
+      }
+    }
+    main.value = saved;
+    if (document.querySelector('input[value="Yes"]').checked) loadNew();
+    validate();
+  }
+  function loadNew() {
+    ['newMachine1', 'newMachine2', 'newMachine3'].forEach(id => {
+      const sel = document.getElementById(id);
+      const saved = sel.value;
+      sel.innerHTML = id === 'newMachine1' ? '<option value="">Select</option>' : '<option value="">Optional</option>';
+      if (currentPrefix) {
+        for (let i = 1; i <= 30; i++) {
+          sel.add(new Option(`${currentPrefix}-${i}`, `${currentPrefix}-${i}`));
+        }
+      }
+      sel.value = saved;
+    });
+  }
+  function toggleNew() {
+    const yes = document.querySelector('input[value="Yes"]').checked;
+    document.getElementById('changedFields').classList.toggle('hidden', !yes);
+    if (yes) loadNew();
+    validate();
+  }
+  function addPhotos(files) {
+    Array.from(files).forEach(file => {
+      if (file.type.startsWith('image/') && photos.length < 20) {
+        photos.push(file);
+        const reader = new FileReader();
+        reader.onload = e => {
+          const div = document.createElement('div');
+          div.className = 'photo-item';
+          div.innerHTML = `<img src="${e.target.result}"><button type="button" class="remove-photo" onclick="removePhoto(this,'${file.name}')">X</button>`;
+          document.getElementById('photoPreview').appendChild(div);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    validate();
+  }
+  function removePhoto(btn, name) {
+    btn.parentElement.remove();
+    photos = photos.filter(p => p.name !== name);
+    validate();
+  }
+  function validate() {
+    const req = ['techName', 'reportDate', 'subStation', 'machineNumber', 'ngSymptom', 'actionTaken', 'machineStatus'];
+    const ok = req.every(id => document.getElementById(id).value.trim()) && photos.length > 0;
+    document.getElementById('submitBtn').disabled = !ok;
+  }
+  ['techName', 'reportDate', 'machineNumber', 'ngSymptom', 'actionTaken'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', validate);
+    el.addEventListener('change', validate);
+  });
+  document.getElementById('subStation').addEventListener('change', loadMachines);
+  document.querySelectorAll('input[name="changed"]').forEach(r => r.addEventListener('change', toggleNew));
+  // PDF + SHARE — TEXT + PDF BOTH (TEXT IN PDF + WHATSAPP)
+  let pdfBlob = null;
+  let pdfFilename = null;
+  let shareText = "";
+  async function generateReport() {
+    const loading = document.getElementById('loadingScreen');
+    loading.classList.remove('hidden');
+    document.querySelector('.footer').style.display = 'none';
+    try {
+      const data = {
+        tech: document.getElementById('techName').value,
+        date: new Date(document.getElementById('reportDate').value).toLocaleString('en-GB'),
+        sub: document.getElementById('subStation').value,
+        machine: document.getElementById('machineNumber').value,
+        ng: document.getElementById('ngSymptom').value,
+        action: document.getElementById('actionTaken').value,
+        status: document.getElementById('machineStatus').value,
+        changed: document.querySelector('input[name="changed"]:checked').value,
+        new1: document.getElementById('newMachine1').value || '-',
+        new2: document.getElementById('newMachine2').value || '-',
+        new3: document.getElementById('newMachine3').value || '-'
+      };
+      const serial = (parseInt(localStorage.getItem('serial') || '0') + 1).toString().padStart(3, '0');
+      localStorage.setItem('serial', serial);
+      pdfFilename = `OMSB_${data.sub}_${serial}.pdf`;
+      // FULL TEXT FOR WHATSAPP & PDF
+      shareText = `OMSB MONITOR STATION TROUBLESHOOT REPORT
+Tech Name: ${data.tech}
+Date: ${data.date}
+Sub-Station: ${data.sub}
+Machine Number: ${data.machine}
+NG Symptom:
+${data.ng}
+Action Taken:
+${data.action}
+Machine Current Status: ${data.status}
+Changed Machine?: ${data.changed}
+${data.changed === 'Yes' ? `New Machine 1: ${data.new1}
+New Machine 2: ${data.new2}
+New Machine 3: ${data.new3}` : ''}
+${photos.length} photo(s) attached in PDF.`;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const width = pdf.internal.pageSize.getWidth();
+      let y = 20;
+      // PAGE 1: FULL TEXT
+      pdf.setFontSize(12);
+      const textLines = pdf.splitTextToSize(shareText, width - 40);
+      pdf.text(textLines, 20, y);
+      y += textLines.length * 7 + 10;
+      if (y > 250) { pdf.addPage(); y = 20; }
+      // PAGE 2+: PHOTOS
+      if (photos.length > 0) {
+        pdf.addPage();
+        y = 20;
+        pdf.setFontSize(16);
+        pdf.setFont(undefined, 'bold');
+        pdf.text('PHOTOS', width/2, y, { align: 'center' });
+        y += 15;
+      }
+      let col = 0;
+      for (let i = 0; i < photos.length; i++) {
+        if (col >= 3) { pdf.addPage(); y = 20; col = 0; }
+        const imgData = await fileToDataURLWithOrientation(photos[i]);
+        const x = 20 + (col * 60);
+        pdf.addImage(imgData, 'JPEG', x, y, 50, 50);
+        col++;
+        if (col >= 3) y += 60;
+      }
+      pdfBlob = pdf.output('blob');
+      // PREVIEW
+      document.getElementById('previewText').textContent = shareText;
+      const previewPhotos = document.getElementById('previewPhotos');
+      previewPhotos.innerHTML = '';
+      photos.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          img.className = 'preview-photo';
+          previewPhotos.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+      loading.classList.add('hidden');
+      document.getElementById('shareScreen').classList.remove('hidden');
+      // SHARE: TEXT + PDF (TEXT IN PDF GUARANTEED)
+      document.getElementById('shareBtn').onclick = () => {
+        const file = new File([pdfBlob], pdfFilename, { type: 'application/pdf' });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({
+            files: [file],
+            title: 'OMSB Report',
+            text: shareText
+          });
+        }
+      };
+    } catch (err) {
+      loading.classList.add('hidden');
+      alert("Error: " + err.message);
+    }
+  }
+  function fileToDataURLWithOrientation(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/jpeg', 0.9));
+        };
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+  validate();
+</script>
+</body>
+</html>

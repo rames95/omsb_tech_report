@@ -34,27 +34,26 @@
     .preview-photo { width: 70px; height: 70px; border-radius: 8px; object-fit: cover; border: 1px solid #ddd; }
     .samsung-warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 14px; text-align: center; }
 
-    /* SUPER VISIBLE OK/NG BUTTONS */
-    .status-group { display: flex; gap: 18px; margin-top: 10px; }
+    /* OK/NG: SAME SIZE, BUT SELECTION IS SUPER CLEAR */
+    .status-group { display: flex; gap: 15px; margin-top: 8px; }
     .status-btn {
       flex: 1;
-      padding: 16px 20px;
-      border: 3px solid transparent;
-      border-radius: 14px;
-      font-weight: 700;
-      font-size: 18px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 15px;
       cursor: pointer;
       text-align: center;
-      transition: all 0.25s ease;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      transition: all 0.2s ease;
     }
     .status-ok { background: #4CAF50; color: white; }
     .status-ng { background: #e74c3c; color: white; }
     .status-btn.selected {
-      border: 5px solid #003087 !important;
-      transform: scale(1.05);
-      box-shadow: 0 6px 16px rgba(0, 51, 135, 0.4);
-      z-index: 1;
+      outline: 4px solid #003087;
+      outline-offset: -2px;
+      box-shadow: 0 0 0 2px white, 0 0 0 6px #003087;
+      font-weight: 800;
     }
   </style>
 </head>
@@ -65,7 +64,6 @@
 </div>
 
 <form id="reportForm">
-  <!-- TECH NAME -->
   <div class="section">
     <div class="form-group">
       <label>TECH NAME</label>
@@ -77,7 +75,6 @@
     </div>
   </div>
 
-  <!-- DATE -->
   <div class="section">
     <div class="form-group">
       <label>DATE</label>
@@ -85,7 +82,6 @@
     </div>
   </div>
 
-  <!-- SUB-STATION & MACHINE -->
   <div class="section">
     <div class="form-group">
       <label>SUB-STATION</label>
@@ -111,7 +107,6 @@
     </div>
   </div>
 
-  <!-- NG & ACTION -->
   <div class="section">
     <div class="form-group">
       <label>NG SYMPTOM</label>
@@ -122,7 +117,6 @@
       <textarea id="actionTaken" placeholder="Type here... (press Enter for new line)" required></textarea>
     </div>
 
-    <!-- CHANGED MACHINE? -->
     <div class="form-group">
       <label>CHANGED MACHINE?</label>
       <div style="display:flex; gap:20px;">
@@ -131,7 +125,6 @@
       </div>
     </div>
 
-    <!-- NEW MACHINES (IF YES) -->
     <div id="changedFields" class="hidden">
       <div class="form-group"><label>MACHINE NUMBER 1</label><select id="newMachine1" onchange="this.blur()"><option value="">Select</option></select></div>
       <div class="form-group"><label>MACHINE NUMBER 2</label><select id="newMachine2" onchange="this.blur()"><option value="">Optional</option></select></div>
@@ -139,7 +132,7 @@
     </div>
   </div>
 
-  <!-- MACHINE CURRENT STATUS — JUST ABOVE TAKE PHOTO -->
+  <!-- MACHINE CURRENT STATUS: JUST ABOVE TAKE PHOTO -->
   <div class="section">
     <div class="form-group">
       <label>MACHINE CURRENT STATUS</label>
@@ -151,7 +144,6 @@
     </div>
   </div>
 
-  <!-- PHOTO UPLOAD -->
   <div class="section">
     <div class="upload-btn" onclick="document.getElementById('cameraInput').click()">Take Photo</div>
     <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" multiple onchange="addPhotos(this.files)">
@@ -161,13 +153,11 @@
     <small>At least 1 photo (up to 20)</small>
   </div>
 
-  <!-- SUBMIT -->
   <div class="footer">
     <button type="button" id="submitBtn" class="btn btn-primary" disabled onclick="generateReport()">SUBMIT</button>
   </div>
 </form>
 
-<!-- LOADING & SHARE -->
 <div id="loadingScreen" class="loading hidden">
   <div class="spinner"></div>
   <p>Generating PDF...</p>
@@ -191,15 +181,23 @@
     document.getElementById('samsungWarning').classList.remove('hidden');
   }
 
-  // Auto time (MYT)
+  // FIXED: Current MYT time
   const now = new Date();
-  const local = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-  document.getElementById('reportDate').value = local.toISOString().slice(0, 16);
+  const myt = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Kuala_Lumpur"}));
+  const iso = myt.toISOString().slice(0, 16);
+  document.getElementById('reportDate').value = iso;
 
-  const prefixMap = { "CONTRAST": "CONTRAST", "DP3 AOI": "DP3AOI", "DP3": "DP3", "QC": "QC", "VCOM": "VCOM", "ID READING": "IDR" };
+  const prefixMap = { 
+    "CONTRAST": "CONTRAST", 
+    "DP3 AOI": "DP3AOI", 
+    "DP3": "DP3", 
+    "QC": "QC", 
+    "VCOM": "VCOM", 
+    "ID READING": "IDR" 
+  };
   let currentPrefix = "", photos = [];
 
-  // STATUS SELECTION
+  // CLEAR SELECTION
   function selectStatus(status, btn) {
     document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
@@ -207,7 +205,7 @@
     validate();
   }
 
-  // MACHINE LOGIC
+  // FIXED: Machine numbers load correctly
   function loadMachines() {
     const sub = document.getElementById('subStation').value;
     currentPrefix = prefixMap[sub] || "";
@@ -216,7 +214,10 @@
     main.innerHTML = '<option value="">Select</option>';
     if (currentPrefix) {
       for (let i = 1; i <= 30; i++) {
-        main.add(new Option(`${currentPrefix}-${i}`, `${currentPrefix}-${i}`));
+        const opt = document.createElement('option');
+        opt.value = `${currentPrefix}-${i}`;
+        opt.textContent = `${currentPrefix}-${i}`;
+        main.appendChild(opt);
       }
     }
     main.value = saved;
@@ -231,7 +232,10 @@
       sel.innerHTML = id === 'newMachine1' ? '<option value="">Select</option>' : '<option value="">Optional</option>';
       if (currentPrefix) {
         for (let i = 1; i <= 30; i++) {
-          sel.add(new Option(`${currentPrefix}-${i}`, `${currentPrefix}-${i}`));
+          const opt = document.createElement('option');
+          opt.value = `${currentPrefix}-${i}`;
+          opt.textContent = `${currentPrefix}-${i}`;
+          sel.appendChild(opt);
         }
       }
       sel.value = saved;
@@ -245,7 +249,6 @@
     validate();
   }
 
-  // PHOTOS
   function addPhotos(files) {
     Array.from(files).forEach(file => {
       if (file.type.startsWith('image/') && photos.length < 20) {
@@ -269,7 +272,6 @@
     validate();
   }
 
-  // VALIDATION
   function validate() {
     const req = ['techName', 'reportDate', 'subStation', 'machineNumber', 'model', 'ngSymptom', 'actionTaken', 'machineStatus'];
     const ok = req.every(id => document.getElementById(id).value.trim()) && photos.length > 0;
@@ -284,7 +286,6 @@
   document.getElementById('subStation').addEventListener('change', loadMachines);
   document.querySelectorAll('input[name="changed"]').forEach(r => r.addEventListener('change', toggleNew));
 
-  // PDF GENERATION
   let pdfBlob = null, pdfFilename = null, shareText = "";
   async function generateReport() {
     const loading = document.getElementById('loadingScreen');
@@ -315,13 +316,11 @@
       const width = pdf.internal.pageSize.getWidth();
       let y = 30;
 
-      // Title
       pdf.setFontSize(18);
       pdf.setFont(undefined, 'bold');
       pdf.text('OMSB MONITOR STATION TROUBLESHOOT REPORT', width/2, y, { align: 'center' });
       y += 20;
 
-      // Content
       pdf.setFontSize(12);
       pdf.setFont(undefined, 'normal');
       const addLine = (label, value) => {
@@ -351,7 +350,6 @@
         addLine('New Machine 3', data.new3);
       }
 
-      // Photos
       if (photos.length > 0) {
         pdf.addPage();
         y = 20;
@@ -372,7 +370,6 @@
 
       pdfBlob = pdf.output('blob');
 
-      // WhatsApp text
       shareText = `OMSB MONITOR STATION TROUBLESHOOT REPORT
 Tech Name: ${data.tech}
 Date: ${data.date}
@@ -391,7 +388,7 @@ New Machine 3: ${data.new3}` : ''}
 ${photos.length} photo(s) attached in PDF.`;
 
       document.getElementById('previewText').textContent = shareText;
-      const previewPhotos = document.getElementBy YarPhotos');
+      const previewPhotos = document.getElementById('previewPhotos');
       previewPhotos.innerHTML = '';
       photos.forEach(file => {
         const reader = new FileReader();

@@ -34,7 +34,6 @@
     .preview-photo { width: 70px; height: 70px; border-radius: 8px; object-fit: cover; border: 1px solid #ddd; }
     .samsung-warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 14px; text-align: center; }
 
-    /* OK/NG: SAME SIZE, BUT SELECTION IS SUPER CLEAR */
     .status-group { display: flex; gap: 15px; margin-top: 8px; }
     .status-btn {
       flex: 1;
@@ -176,12 +175,10 @@
 <script>
   const { jsPDF } = window.jspdf;
 
-  // Samsung warning
   if (/SamsungBrowser/i.test(navigator.userAgent)) {
     document.getElementById('samsungWarning').classList.remove('hidden');
   }
 
-  // FIXED: Current MYT time
   const now = new Date();
   const myt = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Kuala_Lumpur"}));
   const iso = myt.toISOString().slice(0, 16);
@@ -197,7 +194,6 @@
   };
   let currentPrefix = "", photos = [];
 
-  // CLEAR SELECTION
   function selectStatus(status, btn) {
     document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
@@ -205,7 +201,6 @@
     validate();
   }
 
-  // FIXED: Machine numbers load correctly
   function loadMachines() {
     const sub = document.getElementById('subStation').value;
     currentPrefix = prefixMap[sub] || "";
@@ -342,13 +337,16 @@
       const actionLines = pdf.splitTextToSize(data.action, width - 40);
       pdf.text(actionLines, 20, y); y += actionLines.length * 7 + 12;
 
-      addLine('Machine Current Status', data.status);
+      // CHANGED MACHINE FIRST
       addLine('Changed Machine?', data.changed);
       if (data.changed === 'Yes') {
         addLine('New Machine 1', data.new1);
         addLine('New Machine 2', data.new2);
         addLine('New Machine 3', data.new3);
       }
+
+      // MACHINE CURRENT STATUS MOVED DOWN
+      addLine('Machine Current Status', data.status);
 
       if (photos.length > 0) {
         pdf.addPage();
@@ -380,11 +378,11 @@ NG Symptom:
 ${data.ng}
 Action Taken:
 ${data.action}
-Machine Current Status: ${data.status}
 Changed Machine?: ${data.changed}
 ${data.changed === 'Yes' ? `New Machine 1: ${data.new1}
 New Machine 2: ${data.new2}
 New Machine 3: ${data.new3}` : ''}
+Machine Current Status: ${data.status}
 ${photos.length} photo(s) attached in PDF.`;
 
       document.getElementById('previewText').textContent = shareText;

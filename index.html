@@ -34,11 +34,25 @@
     .preview-photo { width: 70px; height: 70px; border-radius: 8px; object-fit: cover; border: 1px solid #ddd; }
     .samsung-warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 14px; text-align: center; }
 
+    /* STATUS BUTTONS — BIGGER & CLEARER */
     .status-group { display: flex; gap: 15px; margin-top: 8px; }
-    .status-btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; flex: 1; text-align: center; }
+    .status-btn { 
+      padding: 14px 24px; 
+      border: none; 
+      border-radius: 12px; 
+      font-weight: 700; 
+      font-size: 16px; 
+      cursor: pointer; 
+      flex: 1; 
+      text-align: center;
+      transition: all 0.2s ease;
+    }
     .status-ok { background: #4CAF50; color: white; }
     .status-ng { background: #e74c3c; color: white; }
-    .status-btn.selected { box-shadow: 0 0 0 2px #003087; }
+    .status-btn.selected { 
+      box-shadow: 0 0 0 4px #003087, 0 4px 12px rgba(0, 51, 135, 0.3); 
+      transform: translateY(-2px);
+    }
   </style>
 </head>
 <body>
@@ -82,7 +96,6 @@
         <option value="">Select</option>
       </select>
     </div>
-    <!-- NEW: MODEL AFTER MACHINE NUMBER -->
     <div class="form-group">
       <label>MODEL</label>
       <input type="text" id="model" placeholder="Enter model" required />
@@ -105,7 +118,14 @@
       </div>
     </div>
 
-    <!-- MOVED: MACHINE CURRENT STATUS AFTER CHANGED MACHINE -->
+    <!-- NEW MACHINE FIELDS -->
+    <div id="changedFields" class="hidden">
+      <div class="form-group"><label>MACHINE NUMBER 1</label><select id="newMachine1" onchange="this.blur()"><option value="">Select</option></select></div>
+      <div class="form-group"><label>MACHINE NUMBER 2</label><select id="newMachine2" onchange="this.blur()"><option value="">Optional</option></select></div>
+      <div class="form-group"><label>MACHINE NUMBER 3</label><select id="newMachine3" onchange="this.blur()"><option value="">Optional</option></select></div>
+    </div>
+
+    <!-- MOVED: MACHINE CURRENT STATUS — JUST ABOVE PHOTO UPLOAD -->
     <div class="form-group">
       <label>MACHINE CURRENT STATUS</label>
       <div class="status-group">
@@ -114,13 +134,9 @@
       </div>
       <input type="hidden" id="machineStatus" required />
     </div>
-
-    <div id="changedFields" class="hidden">
-      <div class="form-group"><label>MACHINE NUMBER 1</label><select id="newMachine1" onchange="this.blur()"><option value="">Select</option></select></div>
-      <div class="form-group"><label>MACHINE NUMBER 2</label><select id="newMachine2" onchange="this.blur()"><option value="">Optional</option></select></div>
-      <div class="form-group"><label>MACHINE NUMBER 3</label><select id="newMachine3" onchange="this.blur()"><option value="">Optional</option></select></div>
-    </div>
   </div>
+
+  <!-- PHOTO SECTION -->
   <div class="section">
     <div class="upload-btn" onclick="document.getElementById('cameraInput').click()">Take Photo</div>
     <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" multiple onchange="addPhotos(this.files)">
@@ -129,10 +145,12 @@
     <div id="photoPreview" class="photo-preview"></div>
     <small>At least 1 photo (up to 20)</small>
   </div>
+
   <div class="footer">
     <button type="button" id="submitBtn" class="btn btn-primary" disabled onclick="generateReport()">SUBMIT</button>
   </div>
 </form>
+
 <div id="loadingScreen" class="loading hidden">
   <div class="spinner"></div>
   <p>Generating PDF...</p>
@@ -146,6 +164,7 @@
   <button id="shareBtn" class="btn btn-primary">SHARE TO WHATSAPP</button>
   <button id="closeBtn" class="btn" style="background:#ccc; margin-top:10px;" onclick="window.close()">CLOSE</button>
 </div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
   const { jsPDF } = window.jspdf;
@@ -258,24 +277,21 @@
       localStorage.setItem('serial', serial);
       pdfFilename = `OMSB_${data.sub}_${serial}.pdf`;
 
-      // PDF WITH SPACING
       const pdf = new jsPDF('p', 'mm', 'a4');
       const width = pdf.internal.pageSize.getWidth();
       let y = 30;
 
-      // BIG BOLD TITLE
       pdf.setFontSize(18);
       pdf.setFont(undefined, 'bold');
       pdf.text('OMSB MONITOR STATION TROUBLESHOOT REPORT', width/2, y, { align: 'center' });
-      y += 20; // 2 line spacing
+      y += 20;
 
-      // DETAILS WITH DOUBLE SPACING
       pdf.setFontSize(12);
       pdf.setFont(undefined, 'normal');
 
       const addLine = (label, value) => {
         pdf.text(`${label}: ${value}`, 20, y);
-        y += 12; // double spacing
+        y += 12;
       };
 
       addLine('Tech Name', data.tech);
@@ -283,7 +299,7 @@
       addLine('Sub-Station', data.sub);
       addLine('Machine Number', data.machine);
       addLine('Model', data.model);
-      y += 6; // extra space before NG
+      y += 6;
       pdf.text('NG Symptom:', 20, y);
       y += 12;
       const ngLines = pdf.splitTextToSize(data.ng, width - 40);
@@ -304,7 +320,6 @@
         addLine('New Machine 3', data.new3);
       }
 
-      // PHOTOS PAGE
       if (photos.length > 0) {
         pdf.addPage();
         y = 20;
@@ -325,7 +340,6 @@
 
       pdfBlob = pdf.output('blob');
 
-      // WHATSAPP TEXT
       shareText = `OMSB MONITOR STATION TROUBLESHOOT REPORT
 Tech Name: ${data.tech}
 Date: ${data.date}

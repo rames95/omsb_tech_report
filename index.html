@@ -34,7 +34,6 @@
     .preview-photo { width: 70px; height: 70px; border-radius: 8px; object-fit: cover; border: 1px solid #ddd; }
     .samsung-warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 14px; text-align: center; }
 
-    /* NEW: STATUS BUTTONS */
     .status-group { display: flex; gap: 15px; margin-top: 8px; }
     .status-btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; flex: 1; text-align: center; }
     .status-ok { background: #4CAF50; color: white; }
@@ -83,6 +82,11 @@
         <option value="">Select</option>
       </select>
     </div>
+    <!-- NEW: MODEL AFTER MACHINE NUMBER -->
+    <div class="form-group">
+      <label>MODEL</label>
+      <input type="text" id="model" placeholder="Enter model" required />
+    </div>
   </div>
   <div class="section">
     <div class="form-group">
@@ -101,7 +105,7 @@
       </div>
     </div>
 
-    <!-- NEW: MACHINE CURRENT STATUS -->
+    <!-- MOVED: MACHINE CURRENT STATUS AFTER CHANGED MACHINE -->
     <div class="form-group">
       <label>MACHINE CURRENT STATUS</label>
       <div class="status-group">
@@ -145,17 +149,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
   const { jsPDF } = window.jspdf;
-  // Samsung detection
   const isSamsung = /SamsungBrowser/i.test(navigator.userAgent);
   if (isSamsung) document.getElementById('samsungWarning').classList.remove('hidden');
-  // AUTO FILL CURRENT TIME (MYT)
   const now = new Date();
   const local = new Date(now.getTime() + 8 * 60 * 60 * 1000);
   document.getElementById('reportDate').value = local.toISOString().slice(0, 16);
   const prefixMap = { "CONTRAST": "CONTRAST", "DP3 AOI": "DP3AOI", "DP3": "DP3", "QC": "QC", "VCOM": "VCOM", "ID READING": "IDR" };
   let currentPrefix = "", photos = [];
 
-  // NEW: STATUS SELECTION
   function selectStatus(status, btn) {
     document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
@@ -163,7 +164,6 @@
     validate();
   }
 
-  // FORM LOGIC — FULLY RESTORED & WORKING
   function loadMachines() {
     const sub = document.getElementById('subStation').value;
     currentPrefix = prefixMap[sub] || "";
@@ -220,18 +220,18 @@
     validate();
   }
   function validate() {
-    const req = ['techName', 'reportDate', 'subStation', 'machineNumber', 'ngSymptom', 'actionTaken', 'machineStatus'];
+    const req = ['techName', 'reportDate', 'subStation', 'machineNumber', 'model', 'ngSymptom', 'actionTaken', 'machineStatus'];
     const ok = req.every(id => document.getElementById(id).value.trim()) && photos.length > 0;
     document.getElementById('submitBtn').disabled = !ok;
   }
-  ['techName', 'reportDate', 'machineNumber', 'ngSymptom', 'actionTaken'].forEach(id => {
+  ['techName', 'reportDate', 'machineNumber', 'model', 'ngSymptom', 'actionTaken'].forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('input', validate);
     el.addEventListener('change', validate);
   });
   document.getElementById('subStation').addEventListener('change', loadMachines);
   document.querySelectorAll('input[name="changed"]').forEach(r => r.addEventListener('change', toggleNew));
-  // PDF + SHARE — TEXT + PDF BOTH (TEXT IN PDF + WHATSAPP)
+
   let pdfBlob = null;
   let pdfFilename = null;
   let shareText = "";
@@ -245,6 +245,7 @@
         date: new Date(document.getElementById('reportDate').value).toLocaleString('en-GB'),
         sub: document.getElementById('subStation').value,
         machine: document.getElementById('machineNumber').value,
+        model: document.getElementById('model').value,
         ng: document.getElementById('ngSymptom').value,
         action: document.getElementById('actionTaken').value,
         status: document.getElementById('machineStatus').value,
@@ -256,32 +257,54 @@
       const serial = (parseInt(localStorage.getItem('serial') || '0') + 1).toString().padStart(3, '0');
       localStorage.setItem('serial', serial);
       pdfFilename = `OMSB_${data.sub}_${serial}.pdf`;
-      // FULL TEXT FOR WHATSAPP & PDF
-      shareText = `OMSB MONITOR STATION TROUBLESHOOT REPORT
-Tech Name: ${data.tech}
-Date: ${data.date}
-Sub-Station: ${data.sub}
-Machine Number: ${data.machine}
-NG Symptom:
-${data.ng}
-Action Taken:
-${data.action}
-Machine Current Status: ${data.status}
-Changed Machine?: ${data.changed}
-${data.changed === 'Yes' ? `New Machine 1: ${data.new1}
-New Machine 2: ${data.new2}
-New Machine 3: ${data.new3}` : ''}
-${photos.length} photo(s) attached in PDF.`;
+
+      // PDF WITH SPACING
       const pdf = new jsPDF('p', 'mm', 'a4');
       const width = pdf.internal.pageSize.getWidth();
-      let y = 20;
-      // PAGE 1: FULL TEXT
+      let y = 30;
+
+      // BIG BOLD TITLE
+      pdf.setFontSize(18);
+      pdf.setFont(undefined, 'bold');
+      pdf.text('OMSB MONITOR STATION TROUBLESHOOT REPORT', width/2, y, { align: 'center' });
+      y += 20; // 2 line spacing
+
+      // DETAILS WITH DOUBLE SPACING
       pdf.setFontSize(12);
-      const textLines = pdf.splitTextToSize(shareText, width - 40);
-      pdf.text(textLines, 20, y);
-      y += textLines.length * 7 + 10;
-      if (y > 250) { pdf.addPage(); y = 20; }
-      // PAGE 2+: PHOTOS
+      pdf.setFont(undefined, 'normal');
+
+      const addLine = (label, value) => {
+        pdf.text(`${label}: ${value}`, 20, y);
+        y += 12; // double spacing
+      };
+
+      addLine('Tech Name', data.tech);
+      addLine('Date', data.date);
+      addLine('Sub-Station', data.sub);
+      addLine('Machine Number', data.machine);
+      addLine('Model', data.model);
+      y += 6; // extra space before NG
+      pdf.text('NG Symptom:', 20, y);
+      y += 12;
+      const ngLines = pdf.splitTextToSize(data.ng, width - 40);
+      pdf.text(ngLines, 20, y);
+      y += ngLines.length * 7 + 12;
+
+      pdf.text('Action Taken:', 20, y);
+      y += 12;
+      const actionLines = pdf.splitTextToSize(data.action, width - 40);
+      pdf.text(actionLines, 20, y);
+      y += actionLines.length * 7 + 12;
+
+      addLine('Machine Current Status', data.status);
+      addLine('Changed Machine?', data.changed);
+      if (data.changed === 'Yes') {
+        addLine('New Machine 1', data.new1);
+        addLine('New Machine 2', data.new2);
+        addLine('New Machine 3', data.new3);
+      }
+
+      // PHOTOS PAGE
       if (photos.length > 0) {
         pdf.addPage();
         y = 20;
@@ -299,8 +322,27 @@ ${photos.length} photo(s) attached in PDF.`;
         col++;
         if (col >= 3) y += 60;
       }
+
       pdfBlob = pdf.output('blob');
-      // PREVIEW
+
+      // WHATSAPP TEXT
+      shareText = `OMSB MONITOR STATION TROUBLESHOOT REPORT
+Tech Name: ${data.tech}
+Date: ${data.date}
+Sub-Station: ${data.sub}
+Machine Number: ${data.machine}
+Model: ${data.model}
+NG Symptom:
+${data.ng}
+Action Taken:
+${data.action}
+Machine Current Status: ${data.status}
+Changed Machine?: ${data.changed}
+${data.changed === 'Yes' ? `New Machine 1: ${data.new1}
+New Machine 2: ${data.new2}
+New Machine 3: ${data.new3}` : ''}
+${photos.length} photo(s) attached in PDF.`;
+
       document.getElementById('previewText').textContent = shareText;
       const previewPhotos = document.getElementById('previewPhotos');
       previewPhotos.innerHTML = '';
@@ -316,7 +358,6 @@ ${photos.length} photo(s) attached in PDF.`;
       });
       loading.classList.add('hidden');
       document.getElementById('shareScreen').classList.remove('hidden');
-      // SHARE: TEXT + PDF (TEXT IN PDF GUARANTEED)
       document.getElementById('shareBtn').onclick = () => {
         const file = new File([pdfBlob], pdfFilename, { type: 'application/pdf' });
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
